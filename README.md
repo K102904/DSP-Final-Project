@@ -5,7 +5,7 @@ A web application that uses HTDemucs and Digital Signal Processing (DSP) to sepa
 
 ## How to Run
 
-### Option 1: Google Colab (Recommended)
+### Google Colab 
 
 1. Open `Karaokeifier_Studio_Colab.ipynb` from this repository.
 2. Click **Open in Colab** or upload the notebook to [Google Colab](https://colab.research.google.com/).
