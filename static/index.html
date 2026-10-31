@@ -1,0 +1,1969 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Karaoke-ifier</title>
+    <style>
+      :root {
+        --bg: #e8edef;
+        --panel: #f6f8f9;
+        --ink: #17262b;
+        --mute: #52666d;
+        --line: #c3cfd3;
+        --ac: #1f6f78;
+        --aci: #fff;
+        --band: rgba(201, 138, 107, 0.25);
+        color-scheme: light dark;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #14201f;
+          --panel: #1c2b2b;
+          --ink: #e4eeee;
+          --mute: #9bb2b2;
+          --line: #34494a;
+          --ac: #5fc2c9;
+          --aci: #0d1a1a;
+          --band: rgba(230, 170, 140, 0.2);
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          16px/1.5 system-ui,
+          sans-serif;
+      }
+      header,
+      main {
+        max-width: 1100px;
+        margin: auto;
+        padding: 16px 22px;
+      }
+      header h1 {
+        margin: 0;
+        font:
+          600 34px Georgia,
+          serif;
+      }
+      header p {
+        color: var(--mute);
+        margin: 4px 0 0;
+      }
+      main {
+        display: grid;
+        grid-template-columns: 1fr 330px;
+        gap: 18px;
+      }
+      @media (max-width: 820px) {
+        main {
+          grid-template-columns: 1fr;
+        }
+      }
+      section,
+      aside {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 16px;
+      }
+      h2 {
+        font:
+          600 19px Georgia,
+          serif;
+        margin: 14px 0 8px;
+        border-top: 1px solid var(--line);
+        padding-top: 12px;
+      }
+      h2:first-child {
+        border: 0;
+        margin-top: 0;
+        padding: 0;
+      }
+      .hint,
+      .sub,
+      #status,
+      #micStatus {
+        color: var(--mute);
+        font-size: 14px;
+      }
+      .sub {
+        margin: 3px 0 12px;
+      }
+      #drop {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 90px;
+        border: 2px dashed var(--line);
+        border-radius: 8px;
+        color: var(--mute);
+        cursor: pointer;
+        text-align: center;
+        padding: 12px;
+      }
+      #drop.drag {
+        border-color: var(--ac);
+      }
+      #file {
+        display: none;
+      }
+      button {
+        font: inherit;
+        background: var(--ac);
+        color: var(--aci);
+        border: 0;
+        border-radius: 6px;
+        padding: 9px 13px;
+        cursor: pointer;
+        margin: 4px 4px 0 0;
+      }
+      button.alt {
+        background: none;
+        color: var(--ink);
+        border: 1px solid var(--line);
+      }
+      button:disabled {
+        opacity: 0.45;
+        cursor: default;
+      }
+      input[type="range"] {
+        width: 100%;
+        accent-color: var(--ac);
+      }
+      label {
+        display: block;
+        margin: 9px 0 2px;
+        font-size: 15px;
+      }
+      .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      output {
+        color: var(--mute);
+      }
+      canvas {
+        width: 100%;
+        height: 220px;
+        display: block;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: rgba(127, 127, 127, 0.025);
+      }
+      .controls {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .controls button {
+        margin-top: 0;
+      }
+      .seek {
+        flex: 1;
+        min-width: 140px;
+      }
+      .meta {
+        display: flex;
+        justify-content: space-between;
+        color: var(--mute);
+        font-size: 13px;
+      }
+      .stems {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 7px;
+        margin: 10px 0;
+      }
+      .stem {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 9px 10px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        cursor: pointer;
+        margin: 0;
+        transition:
+          background 0.15s,
+          border-color 0.15s;
+      }
+      .stem:has(input:checked) {
+        background: rgba(31, 111, 120, 0.075);
+        border-color: var(--ac);
+      }
+      .stem:focus-within {
+        outline: 2px solid var(--ac);
+        outline-offset: 2px;
+      }
+      .stem input {
+        accent-color: var(--ac);
+        width: 18px;
+        height: 18px;
+        flex: none;
+      }
+      .stemcopy {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        flex: 1;
+      }
+      .stemcopy strong {
+        font-size: 14px;
+        font-weight: 600;
+        line-height: 1.3;
+      }
+      .stemcopy small {
+        font-size: 12px;
+        color: var(--mute);
+        line-height: 1.4;
+      }
+      .stemicon {
+        display: grid;
+        place-items: center;
+        width: 32px;
+        height: 32px;
+        flex: none;
+        border-radius: 7px;
+        background: rgba(31, 111, 120, 0.09);
+        font-size: 17px;
+      }
+      .mixpresets {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin: 6px 0 10px;
+      }
+      .mixpresets button {
+        font-size: 12px;
+        padding: 6px 9px;
+        margin: 0;
+      }
+      .mixpresets button[aria-pressed="true"] {
+        background: var(--ac);
+        color: var(--aci);
+      }
+      .mixnote {
+        font-size: 12px;
+        color: var(--mute);
+        margin: 4px 0 0;
+      }
+      #busy {
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        margin: 12px 0;
+      }
+      #busy[hidden],
+      #downloads[hidden],
+      #player[hidden] {
+        display: none;
+      }
+      .spinner {
+        display: inline-block;
+        width: 11px;
+        height: 11px;
+        border: 2px solid var(--line);
+        border-top-color: var(--ac);
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+        margin-right: 7px;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .pill {
+        display: inline-block;
+        border: 1px solid var(--line);
+        border-radius: 99px;
+        padding: 2px 9px;
+        font-size: 12px;
+        color: var(--mute);
+      }
+      .links {
+        display: flex;
+        gap: 7px;
+        flex-wrap: wrap;
+      }
+      .links a {
+        font-size: 13px;
+        color: var(--ac);
+        text-decoration: underline;
+      }
+      #status {
+        min-height: 22px;
+      }
+      details {
+        margin-top: 10px;
+      }
+      summary {
+        cursor: pointer;
+        color: var(--mute);
+      }
+      .footnote {
+        font-size: 12px;
+        color: var(--mute);
+      }
+      .voice-presets {
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+        margin-top: 12px;
+      }
+      .voice-presets button {
+        font-size: 12px;
+        padding: 6px 9px;
+        margin: 2px;
+      }
+      .voice-presets button[aria-pressed="true"] {
+        background: var(--ac);
+        color: var(--aci);
+      }
+
+      /* Studio refinement: warm neutrals, measured spacing and clear progress feedback. */
+      :root {
+        --bg: #e9e9e4;
+        --panel: #fcfcf9;
+        --ink: #26312d;
+        --mute: #606f68;
+        --line: #cbd3cc;
+        --ac: #38665d;
+        --aci: #fff;
+        --band: rgba(194, 153, 110, 0.17);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #192420;
+          --panel: #22302a;
+          --ink: #e8eee9;
+          --mute: #a5b6ac;
+          --line: #43544a;
+          --ac: #98c8b5;
+          --aci: #17241e;
+        }
+      }
+      header {
+        padding-top: 27px;
+        padding-bottom: 12px;
+      }
+      header h1 {
+        letter-spacing: -0.025em;
+      }
+      header p {
+        max-width: 620px;
+      }
+      section,
+      aside {
+        border-radius: 13px;
+        box-shadow: 0 3px 18px rgba(20, 40, 30, 0.035);
+      }
+      button {
+        min-height: 38px;
+        transition:
+          opacity 0.15s,
+          transform 0.15s;
+      }
+      button:enabled:hover {
+        filter: brightness(1.075);
+      }
+      button:focus-visible,
+      input:focus-visible {
+        outline: 3px solid var(--ac);
+        outline-offset: 3px;
+      }
+      #drop {
+        min-height: 112px;
+        background: rgba(123, 147, 132, 0.035);
+        transition: border-color 0.15s;
+      }
+      #drop:hover {
+        border-color: var(--ac);
+      }
+      #busy {
+        background: rgba(115, 144, 120, 0.055);
+        padding: 16px;
+        margin: 14px 0;
+        border-radius: 11px;
+      }
+      .busy-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .busy-heading {
+        font-weight: 600;
+        font-size: 14px;
+      }
+      #elapsed {
+        font-size: 13px;
+        color: var(--mute);
+        font-variant-numeric: tabular-nums;
+      }
+      #busyText {
+        margin: 12px 0 10px;
+        font-size: 14px;
+      }
+      .progress-track {
+        height: 9px;
+        background: var(--line);
+        border-radius: 99px;
+        overflow: hidden;
+        position: relative;
+      }
+      .progress-fill {
+        height: 100%;
+        width: 0;
+        background: var(--ac);
+        border-radius: 99px;
+        transition: width 0.3s ease;
+      }
+      .progress-track.indeterminate .progress-fill {
+        width: 35% !important;
+        animation: indeterminate 1.6s ease-in-out infinite;
+        position: absolute;
+        left: 0;
+      }
+      @keyframes indeterminate {
+        0% {
+          transform: translateX(-110%);
+        }
+        100% {
+          transform: translateX(300%);
+        }
+      }
+      .stage-list {
+        display: flex;
+        gap: 7px;
+        justify-content: space-between;
+        margin-top: 13px;
+        flex-wrap: wrap;
+      }
+      .stage-list span {
+        font-size: 12px;
+        color: var(--mute);
+        padding: 5px 7px;
+        border-radius: 5px;
+        background: rgba(120, 135, 120, 0.08);
+      }
+      .stage-list span.active {
+        background: var(--ac);
+        color: var(--aci);
+      }
+      .stage-list span.done {
+        color: var(--ac);
+        font-weight: 600;
+      }
+      #progressHelp {
+        margin: 12px 0 0;
+        line-height: 1.5;
+      }
+      @media (max-width: 820px) {
+        header {
+          padding-top: 20px;
+        }
+        main {
+          gap: 12px;
+        }
+        .stage-list span {
+          font-size: 11px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .progress-track.indeterminate .progress-fill {
+          animation: none;
+          width: 100% !important;
+          opacity: 0.6;
+        }
+      }
+
+      /* Calm, musician-first interface: compact hierarchy and accessible focus states. */
+      :root {
+        --bg: #e9ece9;
+        --panel: #fffefa;
+        --ink: #25352f;
+        --mute: #5b7069;
+        --line: #d3dcd5;
+        --ac: #376c60;
+        --band: rgba(178, 137, 101, 0.17);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #172520;
+          --panel: #22332c;
+          --ink: #eef4ed;
+          --mute: #a7c2b4;
+          --line: #466054;
+          --ac: #a2d3bf;
+        }
+      }
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+        line-height: 1.55;
+      }
+      header h1 {
+        font-family: Georgia, serif;
+        font-size: clamp(28px, 4vw, 40px);
+        font-weight: 500;
+      }
+      header p {
+        font-size: 15px;
+      }
+      main {
+        grid-template-columns: minmax(0, 1fr) 350px;
+        gap: 22px;
+      }
+      section,
+      aside {
+        border-radius: 14px;
+        padding: 22px;
+        box-shadow: 0 8px 30px rgba(17, 42, 32, 0.045);
+      }
+      h2 {
+        font-weight: 500;
+        letter-spacing: -0.015em;
+      }
+      button {
+        font-weight: 600;
+        border-radius: 9px;
+      }
+      button:enabled:hover {
+        filter: brightness(1.07);
+      }
+      .stem {
+        padding: 11px 12px;
+      }
+      .stem:has(input:checked) {
+        background: rgba(65, 123, 100, 0.065);
+      }
+      #drop {
+        min-height: 125px;
+        border-radius: 10px;
+      }
+      #spec {
+        border-radius: 8px;
+      }
+      .stage-list {
+        gap: 8px;
+      }
+      .progress-track {
+        height: 9px;
+      }
+      #status {
+        margin-top: 11px;
+      }
+      @media (max-width: 850px) {
+        main {
+          grid-template-columns: 1fr;
+        }
+        section,
+        aside {
+          padding: 17px;
+        }
+      }
+
+      /* Lyrics follow the player's clock; no additional audio processing. */
+      .lyrics-card {
+        margin-top: 20px;
+        padding-top: 12px;
+        border-top: 1px solid var(--line);
+      }
+      .lyrics-card h2 {
+        border: 0;
+        margin: 0 0 5px;
+        padding: 0;
+      }
+      .lyrics-fields {
+        display: grid;
+        grid-template-columns: 1fr 1fr auto;
+        gap: 8px;
+        align-items: end;
+        margin: 10px 0;
+      }
+      .lyrics-fields label {
+        font-size: 12px;
+        font-weight: 600;
+        margin: 0;
+      }
+      .lyrics-fields input {
+        width: 100%;
+        font: inherit;
+        font-size: 14px;
+        padding: 9px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        color: var(--ink);
+        background: var(--panel);
+      }
+      .lyrics-fields button {
+        margin: 0;
+      }
+      .lyrics-display {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: rgba(104, 135, 119, 0.055);
+        min-height: 148px;
+        max-height: 270px;
+        overflow-y: auto;
+        padding: 17px 13px;
+        text-align: center;
+        scroll-behavior: smooth;
+      }
+      .lyrics-line {
+        font-size: 15px;
+        line-height: 1.7;
+        opacity: 0.62;
+        padding: 5px 8px;
+        border-radius: 7px;
+        white-space: pre-wrap;
+      }
+      .lyrics-line.current {
+        opacity: 1;
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--ink);
+        background: rgba(75, 130, 108, 0.13);
+      }
+      .lyrics-line:not(.current) {
+        color: var(--mute);
+      }
+      .lyrics-display:not(.synced) .lyrics-line {
+        opacity: 1;
+        text-align: left;
+        font-size: 14px;
+        padding: 1px 5px;
+      }
+      .lyrics-card .hint {
+        margin: 7px 0;
+      }
+      @media (max-width: 550px) {
+        .lyrics-fields {
+          grid-template-columns: 1fr 1fr;
+        }
+        .lyrics-fields button {
+          grid-column: 1/-1;
+        }
+        .lyrics-line.current {
+          font-size: 16px;
+        }
+      }
+      .volume-card {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 13px;
+        margin: 15px 0;
+        background: rgba(110, 135, 116, 0.045);
+      }
+      .volume-card h2 {
+        border: 0;
+        padding: 0;
+        margin: 0 0 2px;
+      }
+      .volume-line {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        margin-top: 11px;
+      }
+      .volume-line label {
+        margin: 0;
+        flex: 1;
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .volume-line output {
+        font-variant-numeric: tabular-nums;
+        font-size: 13px;
+      }
+      .mute-btn {
+        font-size: 11px;
+        min-height: 30px;
+        padding: 4px 8px;
+        margin: 0;
+        white-space: nowrap;
+      }
+      .mute-btn[aria-pressed="true"] {
+        background: var(--ac);
+        color: var(--aci);
+      }
+      .volume-card input[type="range"] {
+        margin: 5px 0 0;
+      }
+      .volume-card .footnote {
+        margin: 1px 0 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Karaoke-ifier</h1>
+      <p>
+        Make your own backing track, then sing along. Your music stays yours.
+      </p>
+    </header>
+    <main>
+      <section>
+        <label id="drop" for="file"
+          ><input id="file" type="file" accept="audio/*" /><span id="dropText"
+            >Drop a song here (MP3, WAV, M4A), or click to choose</span
+          ></label
+        >
+        <div class="row" style="margin-top: 10px">
+          <span class="pill">HTDemucs · 6 parts</span
+          ><span class="hint">6 instrument groups</span>
+        </div>
+        <button id="separate" disabled>Apply</button>
+        <div
+          id="busy"
+          hidden
+          role="region"
+          aria-label="Audio processing status"
+        >
+          <div class="busy-top">
+            <span class="busy-heading"
+              ><span class="spinner" aria-hidden="true"></span>Making your
+              karaoke tracks</span
+            ><span id="elapsed">00:00</span>
+          </div>
+          <p id="busyText" role="status" aria-live="polite">Preparing audio…</p>
+          <div
+            class="progress-track"
+            id="progressTrack"
+            role="progressbar"
+            aria-label="Processing progress"
+            aria-valuemin="0"
+            aria-valuemax="100"
+          >
+            <div id="progressFill" class="progress-fill"></div>
+          </div>
+          <div class="stage-list">
+            <span id="stageUpload">1 · Upload</span
+            ><span id="stageSeparate">2 · Separate</span
+            ><span id="stageLoad">3 · Prepare tracks</span>
+          </div>
+          <p class="footnote" id="progressHelp">
+            Demucs shows an activity indicator during AI separation. Track
+            preparation shows the number of encoded files. Playback stems load
+            only when you need them.
+          </p>
+        </div>
+        <p id="status" role="status" aria-live="polite"></p>
+        <div id="player" hidden>
+          <h2>Your song</h2>
+          <div class="controls">
+            <button id="play" class="alt">▶ Play</button
+            ><input
+              id="seek"
+              class="seek"
+              type="range"
+              min="0"
+              max="1000"
+              value="0"
+              aria-label="Seek playback"
+            /><span id="time">0:00 / 0:00</span>
+          </div>
+          <div class="meta">
+            <span>Original and karaoke tracks</span
+            ><span id="playMode">Original</span>
+          </div>
+          <label style="display: inline"
+            ><input type="radio" name="listen" value="original" checked />
+            Original</label
+          >
+          <label style="display: inline; margin-left: 14px"
+            ><input type="radio" name="listen" value="stems" /> Selected
+            instruments</label
+          >
+          <canvas
+            id="spec"
+            width="960"
+            height="220"
+            aria-label="Live frequency visualization"
+          ></canvas>
+          <p class="hint">
+            Grey: original spectrum · Teal: currently playing · Shaded: typical
+            vocal frequencies.
+          </p>
+          <div id="downloads" hidden>
+            <h2>Download stems</h2>
+            <div id="links" class="links"></div>
+            <p class="hint">
+              Smaller MP3 tracks play in the browser. Download the original WAV
+              stems here. Reusing the same song skips separation when cached.
+            </p>
+          </div>
+        </div>
+
+        <div class="lyrics-card" aria-label="Song lyrics">
+          <h2>
+            Lyrics <span class="pill" id="lyricsBadge">Not searched</span>
+          </h2>
+          <p class="hint">
+            Find the words from your song name. Synced lyrics follow the player
+            automatically.
+          </p>
+          <div class="lyrics-fields">
+            <label
+              >Song title<input
+                id="lyricTitle"
+                type="text"
+                maxlength="140"
+                placeholder="Song title"
+                autocomplete="off"
+            /></label>
+            <label
+              >Artist<input
+                id="lyricArtist"
+                type="text"
+                maxlength="140"
+                placeholder="Artist (optional)"
+                autocomplete="off"
+            /></label>
+            <button id="findLyrics" class="alt" type="button">
+              Find lyrics
+            </button>
+          </div>
+          <p class="hint" id="lyricsStatus" role="status" aria-live="polite">
+            Upload a song to search for lyrics.
+          </p>
+          <div
+            class="lyrics-display"
+            id="lyricsDisplay"
+            aria-label="Lyrics panel"
+          >
+            <div class="lyrics-line">
+              Lyrics will appear here when a match is found.
+            </div>
+          </div>
+          <div class="row" style="gap: 10px; flex-wrap: wrap; margin-top: 8px">
+            <label style="margin: 0; font-size: 13px"
+              ><input id="lyricsFollow" type="checkbox" checked /> Follow
+              playback</label
+            ><a
+              id="lyricsSource"
+              href="https://lrclib.net"
+              target="_blank"
+              rel="noopener noreferrer"
+              style="font-size: 12px; color: var(--ac)"
+              >Lyrics provided by LRCLIB</a
+            >
+          </div>
+        </div>
+      </section>
+      <aside>
+        <h2>Vocal and instrument mix</h2>
+        <p class="sub">
+          Choose a ready-made mix or switch individual parts on and off. Mix six
+          parts with simple on/off switches.
+        </p>
+        <div
+          class="mixpresets"
+          role="group"
+          aria-label="Quick instrument mixes"
+        >
+          <button
+            class="alt"
+            type="button"
+            data-preset="karaoke"
+            aria-pressed="true"
+          >
+            Karaoke</button
+          ><button
+            class="alt"
+            type="button"
+            data-preset="full"
+            aria-pressed="false"
+          >
+            Full song</button
+          ><button
+            class="alt"
+            type="button"
+            data-preset="acapella"
+            aria-pressed="false"
+          >
+            Vocals only
+          </button>
+        </div>
+        <div class="stems" role="group" aria-label="Choose instrument tracks">
+          <label class="stem"
+            ><input type="checkbox" data-stem="vocals" /><span
+              class="stemicon"
+              aria-hidden="true"
+              >♫</span
+            ><span class="stemcopy"
+              ><strong>Vocals</strong
+              ><small>Lead and backing voices</small></span
+            ></label
+          >
+          <label class="stem"
+            ><input type="checkbox" data-stem="drums" checked /><span
+              class="stemicon"
+              aria-hidden="true"
+              >♩</span
+            ><span class="stemcopy"
+              ><strong>Drums</strong><small>Beat and percussion</small></span
+            ></label
+          >
+          <label class="stem"
+            ><input type="checkbox" data-stem="bass" checked /><span
+              class="stemicon"
+              aria-hidden="true"
+              >♬</span
+            ><span class="stemcopy"
+              ><strong>Bass</strong><small>Low-end groove</small></span
+            ></label
+          >
+          <label class="stem"
+            ><input type="checkbox" data-stem="guitar" checked /><span
+              class="stemicon"
+              aria-hidden="true"
+              >♮</span
+            ><span class="stemcopy"
+              ><strong>Guitar</strong><small>Detected guitar parts</small></span
+            ></label
+          >
+          <label class="stem"
+            ><input type="checkbox" data-stem="piano" checked /><span
+              class="stemicon"
+              aria-hidden="true"
+              >♬</span
+            ><span class="stemcopy"
+              ><strong>Piano</strong
+              ><small>Detected keyboard and piano parts</small></span
+            ></label
+          >
+          <label class="stem"
+            ><input type="checkbox" data-stem="other" checked /><span
+              class="stemicon"
+              aria-hidden="true"
+              >♭</span
+            ><span class="stemcopy"
+              ><strong>Other instruments</strong
+              ><small>Sounds not separated into named groups</small></span
+            ></label
+          >
+        </div>
+        <p id="mixSummary" class="mixnote" role="status" aria-live="polite">
+          Karaoke mix · vocals off
+        </p>
+        <div class="volume-card" aria-label="Sound levels">
+          <h2>Sound levels</h2>
+          <p class="hint">Balance the backing track with your live voice.</p>
+          <div class="volume-line">
+            <label for="music">Music volume</label
+            ><output id="musicV" for="music">85%</output
+            ><button
+              type="button"
+              class="alt mute-btn"
+              id="musicMute"
+              aria-pressed="false"
+            >
+              Mute music
+            </button>
+          </div>
+          <input
+            id="music"
+            type="range"
+            min="0"
+            max="100"
+            value="85"
+            aria-label="Music volume"
+          />
+          <p class="footnote">
+            Adjusts the song and selected instruments only.
+          </p>
+          <div class="volume-line">
+            <label for="mv">Mic volume</label
+            ><output id="micV" for="mv">100%</output
+            ><button
+              type="button"
+              class="alt mute-btn"
+              id="micMute"
+              aria-pressed="false"
+            >
+              Mute mic
+            </button>
+          </div>
+          <input
+            id="mv"
+            type="range"
+            min="0"
+            max="150"
+            value="100"
+            aria-label="Microphone volume"
+          />
+          <p class="footnote">
+            Adjusts your live microphone without changing music volume.
+          </p>
+        </div>
+        <h2>Microphone & voice effects</h2>
+        <button id="mic">Turn on microphone</button>
+        <p class="hint" id="micStatus">
+          Sing live—no recording. Use headphones to prevent feedback.
+        </p>
+
+        <div
+          class="voice-presets"
+          role="group"
+          aria-label="Voice sound presets"
+        >
+          <button type="button" class="alt" data-voice="natural">Natural</button
+          ><button type="button" class="alt" data-voice="deep">Deep</button
+          ><button type="button" class="alt" data-voice="bright">Bright</button
+          ><button type="button" class="alt" data-voice="robot">
+            Robot-ish
+          </button>
+        </div>
+        <label class="row" for="pitch"
+          >Voice pitch <output id="pitchV">0 semitones</output></label
+        ><input id="pitch" type="range" min="-7" max="7" step="1" value="0" />
+        <p class="footnote">
+          Changes the live microphone pitch without changing the song speed.
+          Extreme shifts can sound artificial.
+        </p>
+        <label class="row" for="tone"
+          >Vocal tone <output id="toneV">0</output></label
+        ><input
+          id="tone"
+          type="range"
+          min="-100"
+          max="100"
+          step="5"
+          value="0"
+        />
+        <p class="footnote">
+          Left: warmer / darker · Right: brighter / clearer.
+        </p>
+        <label class="row" for="robot"
+          >Vibrato / robot effect <output id="robotV">0%</output></label
+        ><input id="robot" type="range" min="0" max="100" step="5" value="0" />
+        <p class="footnote">
+          A subtle cyclic pitch modulation effect. Try 10–25% first.
+        </p>
+        <label class="row">Echo amount <output id="echoV">25%</output></label
+        ><input id="ev" type="range" min="0" max="100" value="25" />
+        <label class="row">Echo time <output id="delayV">250 ms</output></label
+        ><input id="et" type="range" min="80" max="600" value="250" />
+        <details>
+          <summary>How this works</summary>
+          <p class="hint">
+            HTDemucs 6-stem is a pretrained neural network separating vocals,
+            bass, drums, guitar, piano, and remaining instruments on the Colab
+            server. Browser DSP mixes stems, visualizes the FFT spectrum,
+            applies a browser AudioWorklet granular pitch effect, tone shaping,
+            microphone gain and delayed echo locally.
+          </p>
+        </details>
+        <p class="footnote">
+          Microphone access requires HTTPS or localhost and permission from your
+          browser. Wear headphones to prevent feedback.
+        </p>
+      </aside>
+    </main>
+    <script>
+      const $ = (id) => document.getElementById(id);
+      let chosen = null,
+        ctx = null,
+        original = null,
+        stems = {},
+        stemUrls = {},
+        pendingLoads = {},
+        playToken = 0,
+        sourceNodes = {},
+        master = null,
+        micStream = null,
+        micSource = null,
+        micGain = null,
+        delay = null,
+        feedback = null,
+        echoGain = null,
+        lowpass = null,
+        voiceHP = null,
+        voiceTone = null,
+        pitchWorklet = null,
+        pitchReady = null,
+        analyser = null,
+        raf = 0,
+        playing = false,
+        startAt = 0,
+        startOffset = 0,
+        duration = 0,
+        lastJob = null,
+        objectUrl = null;
+      const fmt = (x) =>
+        `${Math.floor(x / 60)}:${String(Math.floor(x % 60)).padStart(2, "0")}`;
+      function labelValues() {
+        for (const [id, out, unit] of [
+          ["music", "musicV", "%"],
+          ["mv", "micV", "%"],
+          ["ev", "echoV", "%"],
+          ["et", "delayV", " ms"],
+        ])
+          $(out).textContent = $(id).value + unit;
+        $("pitchV").textContent =
+          ($("pitch").value > 0 ? "+" : "") + $("pitch").value + " semitones";
+        $("toneV").textContent =
+          +$("tone").value > 0 ? "+" + $("tone").value : $("tone").value;
+        $("robotV").textContent = $("robot").value + "%";
+      }
+      labelValues();
+      const PITCH_WORKLET = String.raw`
+class VoicePitchProcessor extends AudioWorkletProcessor {
+  static get parameterDescriptors(){ return [
+    {name:'semitones', defaultValue:0,minValue:-7,maxValue:7,automationRate:'k-rate'},
+    {name:'modulation',defaultValue:0,minValue:0,maxValue:1,automationRate:'k-rate'}
+  ]; }
+  constructor(){super();this.buffer=[new Float32Array(16384),new Float32Array(16384)];this.write=0;this.phase=0;this.modPhase=0;this.mix=0;}
+  process(inputs,outputs,params){
+    const input=inputs[0],output=outputs[0];if(!input||!input.length)return true;
+    const sem=params.semitones[0],mod=params.modulation[0];
+    const size=16384,windowSize=3072,base=3600;
+    for(let i=0;i<output[0].length;i++){
+      const wobble=mod*0.33*Math.sin(this.modPhase);
+      this.modPhase+=(2*Math.PI*5.1)/sampleRate;
+      const ratio=Math.pow(2,(sem+wobble)/12);
+      const step=(ratio-1)/windowSize;
+      this.phase=(this.phase+step+1)%1;
+      const target=(Math.abs(sem)>0.01 || mod>0.005)?1:0;
+      this.mix+= (target-this.mix)*0.0015;
+      for(let c=0;c<output.length;c++){
+        const src=input[Math.min(c,input.length-1)];const value=src?src[i]:0;
+        const ring=this.buffer[Math.min(c,1)];ring[this.write]=value;
+        const interp=(delay)=>{
+          let at=(this.write-delay+size)%size;
+          const a=Math.floor(at),f=at-a;
+          return ring[a]*(1-f)+ring[(a+1)%size]*f;
+        };
+        const phaseA=this.phase,phaseB=(this.phase+0.5)%1;
+        const winA=0.5-0.5*Math.cos(2*Math.PI*phaseA);
+        const winB=0.5-0.5*Math.cos(2*Math.PI*phaseB);
+        const dA=base+phaseA*windowSize,dB=base+phaseB*windowSize;
+        const shifted=(interp(dA)*winA+interp(dB)*winB)/(winA+winB+1e-8);
+        output[c][i]=value*(1-this.mix)+shifted*this.mix;
+      }
+      this.write=(this.write+1)%size;
+    }
+    return true;
+  }
+}
+registerProcessor('voice-pitch',VoicePitchProcessor);
+`;
+      async function initPitch() {
+        if (pitchReady) return pitchReady;
+        pitchReady = (async () => {
+          if (!ctx.audioWorklet)
+            throw Error(
+              "Live pitch shifting requires AudioWorklet support in this browser",
+            );
+          const url = URL.createObjectURL(
+            new Blob([PITCH_WORKLET], { type: "text/javascript" }),
+          );
+          try {
+            await ctx.audioWorklet.addModule(url);
+          } finally {
+            URL.revokeObjectURL(url);
+          }
+          pitchWorklet = new AudioWorkletNode(ctx, "voice-pitch");
+          pitchWorklet.connect(voiceTone);
+          const t = ctx.currentTime;
+          pitchWorklet.parameters
+            .get("semitones")
+            .setValueAtTime(+$("pitch").value, t);
+          pitchWorklet.parameters
+            .get("modulation")
+            .setValueAtTime(+$("robot").value / 100, t);
+        })().catch((e) => {
+          pitchReady = null;
+          throw e;
+        });
+        return pitchReady;
+      }
+
+      function init() {
+        if (ctx) return;
+        ctx = new (window.AudioContext || window.webkitAudioContext)();
+        master = ctx.createGain();
+        master.gain.value = 0.85;
+        analyser = ctx.createAnalyser();
+        analyser.fftSize = 2048;
+        master.connect(analyser);
+        analyser.connect(ctx.destination);
+        micGain = ctx.createGain();
+        micGain.gain.value = 1;
+        delay = ctx.createDelay(1);
+        feedback = ctx.createGain();
+        feedback.gain.value = 0.32;
+        lowpass = ctx.createBiquadFilter();
+        lowpass.type = "lowpass";
+        lowpass.frequency.value = 3200;
+        echoGain = ctx.createGain();
+        echoGain.gain.value = 0.25;
+        voiceHP = ctx.createBiquadFilter();
+        voiceHP.type = "highpass";
+        voiceHP.frequency.value = 90;
+        voiceTone = ctx.createBiquadFilter();
+        voiceTone.type = "highshelf";
+        voiceTone.frequency.value = 1600;
+        voiceTone.gain.value = 0;
+        voiceTone.connect(micGain);
+        micGain.connect(ctx.destination);
+        micGain.connect(delay);
+        delay.connect(lowpass);
+        lowpass.connect(feedback);
+        feedback.connect(delay);
+        lowpass.connect(echoGain);
+        echoGain.connect(ctx.destination);
+        updateVolumes();
+        draw();
+      }
+      function updateVolumes() {
+        labelValues();
+        if (!ctx) return;
+        const t = ctx.currentTime;
+        master.gain.setTargetAtTime(+$("music").value / 100, t, 0.015);
+        micGain.gain.setTargetAtTime(+$("mv").value / 100, t, 0.015);
+        echoGain.gain.setTargetAtTime(+$("ev").value / 100, t, 0.015);
+        delay.delayTime.setTargetAtTime(+$("et").value / 1000, t, 0.015);
+        voiceTone.gain.setTargetAtTime((+$("tone").value / 100) * 12, t, 0.02);
+        if (pitchWorklet) {
+          pitchWorklet.parameters
+            .get("semitones")
+            .setTargetAtTime(+$("pitch").value, t, 0.035);
+          pitchWorklet.parameters
+            .get("modulation")
+            .setTargetAtTime(+$("robot").value / 100, t, 0.035);
+        }
+      }
+      ["music", "mv", "ev", "et", "pitch", "tone", "robot"].forEach(
+        (x) =>
+          ($(x).oninput = () => {
+            updateVolumes();
+            voicePresetState();
+          }),
+      );
+      const priorVolume = { music: 85, mv: 100 };
+      for (const [sliderId, btnId, shortName] of [
+        ["music", "musicMute", "music"],
+        ["mv", "micMute", "mic"],
+      ]) {
+        const slider = $(sliderId),
+          btn = $(btnId);
+        slider.addEventListener("input", () => {
+          btn.setAttribute("aria-pressed", "false");
+          btn.textContent = "Mute " + shortName;
+          if (+slider.value > 0) priorVolume[sliderId] = +slider.value;
+        });
+        btn.addEventListener("click", () => {
+          const muted = btn.getAttribute("aria-pressed") !== "true";
+          if (muted) {
+            if (+slider.value > 0) priorVolume[sliderId] = +slider.value;
+            slider.value = 0;
+          } else
+            slider.value =
+              priorVolume[sliderId] || (sliderId === "music" ? 85 : 100);
+          btn.setAttribute("aria-pressed", String(muted));
+          btn.textContent = (muted ? "Unmute " : "Mute ") + shortName;
+          updateVolumes();
+        });
+      }
+      function getPos() {
+        if (!ctx || !playing) return startOffset;
+        return Math.min(duration, startOffset + ctx.currentTime - startAt);
+      }
+      function stopSources() {
+        Object.values(sourceNodes).forEach((n) => {
+          try {
+            n.stop();
+          } catch (_e) {}
+          try {
+            n.disconnect();
+          } catch (_e) {}
+        });
+        sourceNodes = {};
+      }
+      async function loadStem(name) {
+        if (stems[name]) return stems[name];
+        if (!stemUrls[name])
+          throw Error("No separated track available for " + name);
+        if (!pendingLoads[name])
+          pendingLoads[name] = (async () => {
+            const r = await fetch(stemUrls[name]);
+            if (!r.ok) throw Error("Could not load " + name);
+            const b = await decodeBlob(await r.blob());
+            stems[name] = b;
+            return b;
+          })().finally(() => delete pendingLoads[name]);
+        return pendingLoads[name];
+      }
+      async function playAt(pos) {
+        init();
+        await ctx.resume();
+        const token = ++playToken;
+        stopSources();
+        playing = false;
+        startOffset = Math.max(0, Math.min(duration, pos));
+        const selected = document.querySelector(
+          'input[name="listen"]:checked',
+        ).value;
+        const names =
+          selected === "original"
+            ? []
+            : [...document.querySelectorAll("[data-stem]:checked")].map(
+                (e) => e.dataset.stem,
+              );
+        if (selected !== "original" && !Object.keys(stemUrls).length) {
+          $("status").textContent =
+            "Apply separation first to hear instrument stems.";
+          return;
+        }
+        try {
+          if (names.length) {
+            $("status").textContent =
+              "Loading " +
+              names.filter((n) => !stems[n]).length +
+              " selected audio parts…";
+            $("play").disabled = true;
+            await Promise.all(names.map(loadStem));
+          }
+          if (token !== playToken) return;
+          const buffers =
+            selected === "original"
+              ? { original }
+              : Object.fromEntries(names.map((n) => [n, stems[n]]));
+          startAt = ctx.currentTime + 0.08;
+          for (const [name, b] of Object.entries(buffers)) {
+            if (!b) continue;
+            const n = ctx.createBufferSource();
+            n.buffer = b;
+            n.connect(master);
+            n.start(startAt, startOffset);
+            sourceNodes[name] = n;
+          }
+          playing = true;
+          $("play").textContent = "❚❚ Pause";
+          $("playMode").textContent =
+            selected === "original" ? "Original" : "Instrument mix";
+          $("status").textContent =
+            "Playing · Change the instrument mix anytime.";
+        } catch (e) {
+          $("status").textContent = "Playback error: " + e.message;
+        } finally {
+          if (token === playToken) $("play").disabled = false;
+        }
+      }
+      function pause() {
+        playToken++;
+        if (!playing) return;
+        startOffset = getPos();
+        playing = false;
+        stopSources();
+        $("play").textContent = "▶ Play";
+      }
+      function updateMixUI() {
+        const active = [
+          ...document.querySelectorAll("[data-stem]:checked"),
+        ].map((e) => e.dataset.stem);
+        const names = {
+          vocals: "Vocals",
+          drums: "Drums",
+          bass: "Bass",
+          guitar: "Guitar",
+          piano: "Piano",
+          other: "Remaining",
+        };
+        const key = active.slice().sort().join(",");
+        const presets = {
+          karaoke: "bass,drums,guitar,other,piano",
+          full: "bass,drums,guitar,other,piano,vocals",
+          acapella: "vocals",
+        };
+        document
+          .querySelectorAll("[data-preset]")
+          .forEach((b) =>
+            b.setAttribute(
+              "aria-pressed",
+              String(presets[b.dataset.preset] === key),
+            ),
+          );
+        $("mixSummary").textContent = active.length
+          ? `${active.length} part${active.length === 1 ? "" : "s"} on · ${active.map((x) => names[x]).join(", ")}`
+          : "All parts muted · select at least one instrument";
+      }
+      function refreshMix() {
+        updateMixUI();
+        if (playing) playAt(getPos());
+      }
+      document
+        .querySelectorAll('[data-stem],input[name="listen"]')
+        .forEach((e) => (e.onchange = refreshMix));
+      document.querySelectorAll("[data-preset]").forEach(
+        (b) =>
+          (b.onclick = () => {
+            const sets = {
+              karaoke: ["drums", "bass", "guitar", "piano", "other"],
+              full: ["vocals", "drums", "bass", "guitar", "piano", "other"],
+              acapella: ["vocals"],
+            };
+            document
+              .querySelectorAll("[data-stem]")
+              .forEach(
+                (x) =>
+                  (x.checked = sets[b.dataset.preset].includes(x.dataset.stem)),
+              );
+            document.querySelector(
+              'input[name="listen"][value="stems"]',
+            ).checked = true;
+            refreshMix();
+          }),
+      );
+      updateMixUI();
+      $("play").onclick = () => {
+        if (playing) {
+          pause();
+        } else if (original) {
+          playAt(getPos() >= duration ? 0 : getPos());
+        }
+      };
+      $("seek").oninput = (e) => {
+        if (!duration) return;
+        const pos = duration * (+e.target.value / 1000);
+        if (playing) playAt(pos);
+        else {
+          startOffset = pos;
+          updateTime();
+        }
+      };
+      function updateTime() {
+        if (!duration) return;
+        const pos = getPos();
+        $("time").textContent = fmt(pos) + " / " + fmt(duration);
+        $("seek").value = (1000 * pos) / duration;
+        updateLyrics();
+        if (playing && pos >= duration - 0.04) pause();
+      }
+      setInterval(updateTime, 250);
+      function draw() {
+        const el = $("spec"),
+          g = el.getContext("2d"),
+          w = el.width,
+          h = el.height;
+        const st = getComputedStyle(document.documentElement),
+          fx = (f) => (Math.log(f / 20) / Math.log(1000)) * w;
+        const plot = () => {
+          g.clearRect(0, 0, w, h);
+          g.fillStyle = st.getPropertyValue("--band");
+          g.fillRect(fx(200), 0, fx(12000) - fx(200), h);
+          if (analyser) {
+            const data = new Uint8Array(analyser.frequencyBinCount);
+            analyser.getByteFrequencyData(data);
+            g.fillStyle = st.getPropertyValue("--ac");
+            for (let x = 0; x < w; x += 3) {
+              const f = 20 * Math.pow(1000, x / w);
+              const b = Math.min(
+                data.length - 1,
+                Math.floor((f / (ctx.sampleRate / 2)) * data.length),
+              );
+              const height = (data[b] / 255) * h;
+              g.fillRect(x, h - height, 2, height);
+            }
+          }
+          g.fillStyle = st.getPropertyValue("--mute");
+          g.font = "14px sans-serif";
+          [100, 1000, 10000].forEach((f) =>
+            g.fillText(
+              f >= 1000 ? f / 1000 + "kHz" : f + "Hz",
+              fx(f) + 4,
+              h - 6,
+            ),
+          );
+          raf = requestAnimationFrame(plot);
+        };
+        plot();
+      }
+      async function decodeBlob(blob) {
+        init();
+        return ctx.decodeAudioData(await blob.arrayBuffer());
+      }
+      async function loadLocal(file) {
+        if (!file) return;
+        pause();
+        original = null;
+        stems = {};
+        stemUrls = {};
+        pendingLoads = {};
+        playToken++;
+        $("player").hidden = true;
+        $("downloads").hidden = true;
+        $("separate").disabled = false;
+        chosen = file;
+        $("dropText").textContent = file.name;
+        const guess = guessSongName(file.name);
+        $("lyricTitle").value = guess.title;
+        $("lyricArtist").value = guess.artist;
+        lyricsRequest++;
+        lyricsLines = [];
+        lyricsTimed = false;
+        setLyricMessage("Looking for lyrics…", "Searching");
+        $("status").textContent =
+          "Song ready. Choose Apply to create your tracks.";
+        try {
+          original = await decodeBlob(file);
+          duration = original.duration;
+          startOffset = 0;
+          $("player").hidden = false;
+          updateTime();
+          lookupLyrics();
+        } catch (e) {
+          $("status").textContent =
+            "Cannot preview this audio here: " +
+            e.message +
+            ". You may still try AI separation.";
+          lookupLyrics();
+        }
+      }
+      $("file").onchange = (e) => loadLocal(e.target.files[0]);
+      $("drop").ondragover = (e) => {
+        e.preventDefault();
+        $("drop").classList.add("drag");
+      };
+      $("drop").ondragleave = () => $("drop").classList.remove("drag");
+      $("drop").ondrop = (e) => {
+        e.preventDefault();
+        $("drop").classList.remove("drag");
+        loadLocal(e.dataTransfer.files[0]);
+      };
+      let jobStarted = 0,
+        progressTicker = null;
+      function clock(seconds) {
+        const n = Math.max(0, Math.floor(seconds));
+        return (
+          String(Math.floor(n / 60)).padStart(2, "0") +
+          ":" +
+          String(n % 60).padStart(2, "0")
+        );
+      }
+      function beginBusy() {
+        jobStarted = Date.now();
+        $("busy").hidden = false;
+        $("elapsed").textContent = "00:00";
+        clearInterval(progressTicker);
+        progressTicker = setInterval(() => {
+          $("elapsed").textContent = clock((Date.now() - jobStarted) / 1000);
+        }, 1000);
+        setStage("upload");
+        setProgress(0);
+      }
+      function setStage(name) {
+        const order = ["upload", "separating", "finalizing"];
+        const index = Math.max(0, order.indexOf(name));
+        ["stageUpload", "stageSeparate", "stageLoad"].forEach((id, i) => {
+          $(id).classList.toggle("active", i === index);
+          $(id).classList.toggle("done", i < index);
+        });
+      }
+      function setProgress(percent, indeterminate = false) {
+        const track = $("progressTrack");
+        track.classList.toggle("indeterminate", indeterminate);
+        $("progressFill").style.width = indeterminate
+          ? "35%"
+          : Math.min(100, Math.max(0, percent)) + "%";
+        if (indeterminate) {
+          track.removeAttribute("aria-valuenow");
+          track.setAttribute(
+            "aria-valuetext",
+            "AI separation in progress; duration unknown",
+          );
+        } else {
+          track.setAttribute("aria-valuenow", String(Math.round(percent)));
+          track.removeAttribute("aria-valuetext");
+        }
+      }
+      function finishBusy() {
+        clearInterval(progressTicker);
+        progressTicker = null;
+        $("busy").hidden = true;
+        $("separate").disabled = false;
+      }
+      async function run() {
+        if (!chosen) return;
+        pause();
+        $("separate").disabled = true;
+        beginBusy();
+        $("busyText").textContent = "Uploading your song…";
+        $("status").textContent = "";
+        try {
+          const data = new FormData();
+          data.append("audio", chosen);
+          const info = await new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", "/api/separate");
+            xhr.upload.onprogress = (e) => {
+              if (e.lengthComputable)
+                setProgress(Math.max(1, Math.round((e.loaded / e.total) * 12)));
+            };
+            xhr.onerror = () => reject(Error("Network error during upload"));
+            xhr.onload = () => {
+              let body;
+              try {
+                body = JSON.parse(xhr.responseText);
+              } catch {
+                body = {};
+              }
+              xhr.status >= 200 && xhr.status < 300
+                ? resolve(body)
+                : reject(Error(body.detail || "Upload failed"));
+            };
+            xhr.send(data);
+          });
+          lastJob = info.job;
+          setStage("separating");
+          await poll(info.job);
+        } catch (e) {
+          $("status").textContent = "Could not finish: " + e.message;
+          finishBusy();
+        }
+      }
+      async function poll(job) {
+        for (;;) {
+          const resp = await fetch(`/api/status/${job}`, { cache: "no-store" });
+          if (!resp.ok) throw Error("Could not check separation status");
+          const info = await resp.json();
+          if (info.error) throw Error(info.error);
+          if (!info.done) {
+            const isFinishing = info.phase === "finalizing";
+            setStage(isFinishing ? "finalizing" : "separating");
+            setProgress(isFinishing ? 92 : 12, !isFinishing);
+            $("busyText").textContent = isFinishing
+              ? info.stage || "Encoding browser tracks…"
+              : `Demucs is working on your song${info.device === "cuda" ? " · GPU" : info.device === "cpu" ? " · CPU" : ""}`;
+            if (info.elapsed_seconds)
+              $("elapsed").textContent = clock(info.elapsed_seconds);
+            await new Promise((r) => setTimeout(r, 1600));
+            continue;
+          }
+          setStage("finalizing");
+          setProgress(99);
+          $("busyText").textContent = "Preparing your player…";
+          stemUrls = info.stems;
+          stems = {};
+          $("downloads").hidden = false;
+          $("links").replaceChildren();
+          for (const [stem, url] of Object.entries(info.downloads || {})) {
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = stem + ".wav";
+            a.textContent =
+              stem.charAt(0).toUpperCase() + stem.slice(1) + " WAV";
+            $("links").append(a);
+          }
+          document.querySelector('[value="stems"]').checked = true;
+          finishBusy();
+          $("status").textContent =
+            info.stage === "Loaded from cache"
+              ? "Cached tracks ready. Press Play."
+              : "Tracks ready. Press Play to load your selected instruments.";
+          return;
+        }
+      }
+      $("separate").onclick = run;
+      function voicePresetState() {
+        const presets = {
+          natural: [0, 0, 0],
+          deep: [-4, -40, 0],
+          bright: [3, 35, 0],
+          robot: [-1, 10, 80],
+        };
+        const values = [+$("pitch").value, +$("tone").value, +$("robot").value];
+        document
+          .querySelectorAll("[data-voice]")
+          .forEach((b) =>
+            b.setAttribute(
+              "aria-pressed",
+              String(presets[b.dataset.voice].every((n, i) => n === values[i])),
+            ),
+          );
+      }
+      document.querySelectorAll("[data-voice]").forEach(
+        (b) =>
+          (b.onclick = () => {
+            const p = {
+              natural: [0, 0, 0],
+              deep: [-4, -40, 0],
+              bright: [3, 35, 0],
+              robot: [-1, 10, 80],
+            }[b.dataset.voice];
+            ["pitch", "tone", "robot"].forEach((k, i) => ($(k).value = p[i]));
+            updateVolumes();
+            voicePresetState();
+          }),
+      );
+      voicePresetState();
+      $("mic").onclick = async () => {
+        init();
+        await ctx.resume();
+        if (micStream) {
+          micStream.getTracks().forEach((t) => t.stop());
+          micSource.disconnect();
+          voiceHP.disconnect();
+          micStream = null;
+          micSource = null;
+          $("mic").textContent = "Turn on microphone";
+          $("micStatus").textContent =
+            "Microphone off. Use headphones when singing.";
+          return;
+        }
+        try {
+          micStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              echoCancellation: false,
+              noiseSuppression: false,
+              autoGainControl: false,
+            },
+          });
+          micSource = ctx.createMediaStreamSource(micStream);
+          micSource.connect(voiceHP);
+          try {
+            await initPitch();
+            voiceHP.connect(pitchWorklet);
+            $("micStatus").textContent =
+              "Microphone on — voice effects ready. Use headphones.";
+          } catch (err) {
+            voiceHP.connect(voiceTone);
+            $("micStatus").textContent =
+              "Microphone on — pitch effect unavailable (" +
+              err.message +
+              "); tone and echo still work.";
+          }
+          updateVolumes();
+          $("mic").textContent = "Turn off microphone";
+        } catch (e) {
+          $("micStatus").textContent =
+            "Microphone unavailable: " +
+            e.message +
+            ". Open over HTTPS and allow microphone permission.";
+        }
+      };
+      window.addEventListener("pagehide", () => {
+        if (micStream) micStream.getTracks().forEach((t) => t.stop());
+      });
+
+      // LRCLIB searches run independently of AI separation. Returned text is inserted as text, never HTML.
+      let lyricsLines = [],
+        lyricsTimed = false,
+        lyricsActiveIndex = -1,
+        lyricsRequest = 0;
+      function guessSongName(filename) {
+        let base = filename
+          .replace(/\.[^/.]+$/, "")
+          .replace(/[_]+/g, " ")
+          .replace(/\s*\[[^\]]*(official|audio|lyrics|video|hd)[^\]]*\]/gi, "")
+          .replace(
+            /\s*\([^)]*(official|audio|lyrics|video|visualizer)[^)]*\)/gi,
+            "",
+          )
+          .trim();
+        const split = base.split(/\s+[-–—]\s+/);
+        return split.length >= 2
+          ? { artist: split.shift().trim(), title: split.join(" - ").trim() }
+          : { artist: "", title: base };
+      }
+      function parseLrc(s) {
+        const out = [];
+        for (const line of s.split(/\r?\n/)) {
+          const exp = /\[(\d{1,3}):(\d{2})(?:[.:](\d{1,3}))?\]/g;
+          const stamps = [...line.matchAll(exp)];
+          const text = line.replace(exp, "").trim();
+          if (!stamps.length || !text) continue;
+          for (const m of stamps) {
+            const fraction = m[3] ? Number("0." + m[3]) : 0;
+            out.push({
+              time: 60 * Number(m[1]) + Number(m[2]) + fraction,
+              text,
+            });
+          }
+        }
+        return out.sort((a, b) => a.time - b.time);
+      }
+      function setLyricMessage(message, badge = "Unavailable") {
+        $("lyricsDisplay").replaceChildren();
+        let e = document.createElement("div");
+        e.className = "lyrics-line";
+        e.textContent = message;
+        $("lyricsDisplay").append(e);
+        $("lyricsBadge").textContent = badge;
+      }
+      function drawLyrics(record) {
+        const timed = record.syncedLyrics ? parseLrc(record.syncedLyrics) : [];
+        lyricsTimed = timed.length > 0;
+        lyricsLines = lyricsTimed
+          ? timed
+          : (record.plainLyrics || "")
+              .split(/\r?\n/)
+              .filter((v) => v.trim())
+              .map((text) => ({ text }));
+        $("lyricsBadge").textContent = lyricsTimed
+          ? "Timed lyrics"
+          : "Plain lyrics";
+        $("lyricsStatus").textContent =
+          `Matched: ${record.trackName || record.name || "Song"} — ${record.artistName || "Unknown artist"}`;
+        $("lyricsSource").href = Number.isInteger(record.id)
+          ? `https://lrclib.net/api/get/${record.id}`
+          : "https://lrclib.net";
+        const box = $("lyricsDisplay");
+        box.replaceChildren();
+        box.classList.toggle("synced", lyricsTimed);
+        for (const line of lyricsLines) {
+          const row = document.createElement("div");
+          row.className = "lyrics-line";
+          row.textContent = line.text;
+          box.append(row);
+        }
+        lyricsActiveIndex = -1;
+        updateLyrics();
+      }
+      function updateLyrics() {
+        if (!lyricsTimed || !lyricsLines.length) return;
+        const pos = getPos();
+        let lo = 0,
+          hi = lyricsLines.length - 1,
+          active = -1;
+        while (lo <= hi) {
+          const mid = (lo + hi) >> 1;
+          if (lyricsLines[mid].time <= pos) {
+            active = mid;
+            lo = mid + 1;
+          } else hi = mid - 1;
+        }
+        if (active === lyricsActiveIndex) return;
+        const children = $("lyricsDisplay").children;
+        if (lyricsActiveIndex >= 0 && children[lyricsActiveIndex])
+          children[lyricsActiveIndex].classList.remove("current");
+        lyricsActiveIndex = active;
+        if (active >= 0 && children[active]) {
+          children[active].classList.add("current");
+          if ($("lyricsFollow").checked)
+            children[active].scrollIntoView({
+              block: "center",
+              behavior: "smooth",
+            });
+        }
+      }
+      async function lookupLyrics() {
+        const request = ++lyricsRequest,
+          title = $("lyricTitle").value.trim(),
+          artist = $("lyricArtist").value.trim();
+        if (!title) {
+          setLyricMessage("Enter a song title to search.", "Not searched");
+          return;
+        }
+        $("findLyrics").disabled = true;
+        $("lyricsStatus").textContent = "Searching LRCLIB…";
+        setLyricMessage("Looking up lyrics for this song…", "Searching");
+        try {
+          const q = new URLSearchParams({ track_name: title });
+          if (artist) q.set("artist_name", artist);
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 12000);
+          let r;
+          try {
+            r = await fetch(`https://lrclib.net/api/search?${q}`, {
+              signal: controller.signal,
+              headers: { Accept: "application/json" },
+            });
+          } finally {
+            clearTimeout(timeout);
+          }
+          if (!r.ok)
+            throw Error(
+              r.status === 429
+                ? "Lyrics provider rate limit reached"
+                : `Lyrics provider returned HTTP ${r.status}`,
+            );
+          const hits = await r.json();
+          if (request !== lyricsRequest) return;
+          const normalize = (x) =>
+            String(x || "")
+              .toLowerCase()
+              .normalize("NFKD")
+              .replace(/[^a-z0-9 ]/g, "")
+              .replace(/\s+/g, " ")
+              .trim();
+          const good = (Array.isArray(hits) ? hits : []).filter(
+            (x) => !x.instrumental && (x.syncedLyrics || x.plainLyrics),
+          );
+          const scored = good
+            .map((x) => {
+              let score = 0;
+              const name = normalize(x.trackName || x.name);
+              const target = normalize(title);
+              if (name === target) score += 15;
+              else if (name.includes(target) || target.includes(name))
+                score += 5;
+              if (artist) {
+                const a = normalize(artist),
+                  b = normalize(x.artistName);
+                if (a === b) score += 12;
+                else if (b.includes(a) || a.includes(b)) score += 3;
+                else score -= 6;
+              }
+              if (x.syncedLyrics) score += 3;
+              if (duration && x.duration)
+                score += Math.max(0, 3 - Math.abs(duration - x.duration) / 12);
+              return { x, score };
+            })
+            .sort((a, b) => b.score - a.score);
+          if (!scored.length) {
+            lyricsLines = [];
+            lyricsTimed = false;
+            $("lyricsStatus").textContent =
+              "No lyrics found. Try correcting the title or artist.";
+            setLyricMessage(
+              "No matching lyrics available. You can still use the karaoke player.",
+              "Not found",
+            );
+            return;
+          }
+          drawLyrics(scored[0].x);
+          if (scored[0].score < 8)
+            $("lyricsStatus").textContent +=
+              " · Check that this is the right song.";
+        } catch (err) {
+          if (request !== lyricsRequest) return;
+          lyricsLines = [];
+          lyricsTimed = false;
+          setLyricMessage(
+            "Could not retrieve lyrics. Try again later.",
+            "Offline",
+          );
+          $("lyricsStatus").textContent =
+            err.name === "AbortError"
+              ? "Lyrics search timed out."
+              : err.message;
+        } finally {
+          if (request === lyricsRequest) $("findLyrics").disabled = false;
+        }
+      }
+      $("findLyrics").onclick = lookupLyrics;
+      for (const id of ["lyricTitle", "lyricArtist"])
+        $(id).addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            lookupLyrics();
+          }
+        });
+    </script>
+  </body>
+</html>
